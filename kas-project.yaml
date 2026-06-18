@@ -30,6 +30,7 @@ repos:
       meta-multimedia:
       meta-perl:
       meta-networking:
+      meta-initramfs:
   meta-yocto:
     url: "https://git.yoctoproject.org/meta-yocto"
     commit: "8251bdad5fda780a000fb41e6eda82eadf0fa39e"
