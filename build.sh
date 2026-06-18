@@ -13,9 +13,6 @@ source "$VENV_DIR/bin/activate"
 
 cd build
 
-# Pin kas-container to a version that works with dunfell
-export KAS_IMAGE_VERSION="${KAS_IMAGE_VERSION:-4.6}"
-
 kas-container build ../kas-project.yaml || exit 1
 
 # Images built by kas-project.yaml. Each produces its own .wic.xz.
