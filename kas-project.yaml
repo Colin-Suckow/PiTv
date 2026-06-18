@@ -27,6 +27,9 @@ repos:
     layers:
       meta-oe:
       meta-python:
+      meta-multimedia:
+      meta-perl:
+      meta-networking:
   meta-yocto:
     url: "https://git.yoctoproject.org/meta-yocto"
     commit: "8251bdad5fda780a000fb41e6eda82eadf0fa39e"
@@ -36,6 +39,15 @@ repos:
   meta-raspberrypi:
     url: "https://github.com/agherzan/meta-raspberrypi"
     commit: "0c76b0feadbe2afa4cec4cd497636e94eca30ec3"
+  meta-qt6:
+    url: "https://code.qt.io/yocto/meta-qt6.git"
+    commit: "93272ba36a5d45a317acdbcfed425abbd8371ab6"
+  meta-kf6:
+    url: "https://invent.kde.org/packaging/yocto-meta-kf6"
+    commit: "31e6ad8b7b788d57f35e578f113c567cbaefcad0"
+  meta-kde:
+    url: "https://github.com/KDE/yocto-meta-kde"
+    commit: "3fb5d3cbc1607294c712afb1b04f45ee14ddab3f"
   pitv:
     layers:
       meta-pitv:

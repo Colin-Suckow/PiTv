@@ -9,6 +9,7 @@ inherit core-image extrausers
 IMAGE_INSTALL += " \
     vim \
     sudo \
+    plasma-bigscreen \
 "
 
 EXTRA_IMAGE_FEATURES += " \
@@ -31,3 +32,4 @@ sudoers_setup() {
 }
 ROOTFS_POSTPROCESS_COMMAND += "sudoers_setup;"
  
+RPI_EXTRA_CONFIG = '\ndtoverlay=vc4-kms-dsi-7inch\n'
