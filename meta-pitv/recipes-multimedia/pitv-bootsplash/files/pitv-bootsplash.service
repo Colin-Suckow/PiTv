@@ -1,0 +1,20 @@
+[Unit]
+Description=PiTv boot splash video
+# Start after plymouth has the screen, but before the graphical UI comes up.
+After=plymouth-start.service systemd-user-sessions.service
+Wants=plymouth-start.service
+Before=display-manager.service sddm.service
+# Don't let the normal plymouth-quit run while we're using the display.
+Conflicts=plymouth-quit.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/pitv-bootsplash
+TimeoutStartSec=120
+# Become the foreground VT so mpv can acquire DRM master.
+StandardInput=tty
+StandardOutput=journal
+TTYPath=/dev/tty1
+
+[Install]
+WantedBy=graphical.target
