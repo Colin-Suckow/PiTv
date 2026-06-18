@@ -1,0 +1,41 @@
+header:
+  version: 1
+machine: raspberrypi5
+target:
+  - pitv-base
+distro: pitv
+local_conf_header:
+
+  # Yocto fetches a lot of packages at build time, and sometimes those fetches fail.
+  # Increasing BB_FETCH_RETRIES gives us a few attempts to download the package before erroring the build
+  fetch-settings: |
+    BB_FETCH_RETRIES = "3"
+repos:
+  bitbake:
+    url: https://git.openembedded.org/bitbake
+    commit: acfe02fa38b5da9e6a36c6cedcf91d4fcbefbfbd
+    layers:
+      .: excluded
+  openembedded-core:
+    url: "https://git.openembedded.org/openembedded-core"
+    commit: "cd635307ab8460d05d13dbfb3f28efdbde6609cd"
+    layers:
+      meta:
+  meta-openembedded:
+    url: "https://git.openembedded.org/meta-openembedded"
+    commit: "a43f0d532c399458cae44ce66f3799a220fbb497"
+    layers:
+      meta-oe:
+      meta-python:
+  meta-yocto:
+    url: "https://git.yoctoproject.org/meta-yocto"
+    commit: "8251bdad5fda780a000fb41e6eda82eadf0fa39e"
+    layers:
+      meta-poky:
+      meta-yocto-bsp:
+  meta-raspberrypi:
+    url: "https://github.com/agherzan/meta-raspberrypi"
+    commit: "0c76b0feadbe2afa4cec4cd497636e94eca30ec3"
+  pitv:
+    layers:
+      meta-pitv:
