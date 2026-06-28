@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PiTv Build <build@pitv>
+Date: Wed, 18 Jun 2026 00:00:00 +0000
+Subject: [PATCH] Use qt6_add_shaders instead of versionless qt_add_shaders
+
+ECMQmlModule6.cmake sets QT_NO_CREATE_VERSIONLESS_FUNCTIONS=ON while
+calling find_package(Qt6 COMPONENTS Core Qml). This causes Qt6ShaderTools
+to be loaded (via the Qml plugin dependency chain) without registering the
+versionless qt_add_shaders alias. A subsequent find_package(Qt6 COMPONENTS
+ShaderTools) is a no-op because the package is already marked found, so
+qt_add_shaders is never defined and cmake errors with "Unknown CMake command".
+
+The versioned qt6_add_shaders is always registered unconditionally, so use
+that instead.
+
+Upstream-Status: Pending
+---
+ src/qmlcontrols/graphicaleffects/CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/qmlcontrols/graphicaleffects/CMakeLists.txt b/src/qmlcontrols/graphicaleffects/CMakeLists.txt
+index 1111111..2222222 100644
+--- a/src/qmlcontrols/graphicaleffects/CMakeLists.txt
++++ b/src/qmlcontrols/graphicaleffects/CMakeLists.txt
+@@ -10,7 +10,7 @@ ecm_add_qml_module(graphicaleffects URI org.kde.graphicaleffects
+
+ ecm_generate_qdoc(graphicaleffects graphicaleffects.qdocconf)
+
+-qt_add_shaders(graphicaleffects "graphicaleffects_shaders"
++qt6_add_shaders(graphicaleffects "graphicaleffects_shaders"
+     BATCHABLE
+     PRECOMPILE
+     OPTIMIZED

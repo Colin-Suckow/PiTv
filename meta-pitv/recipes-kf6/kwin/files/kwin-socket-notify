@@ -1,0 +1,112 @@
+#!/bin/sh
+# kwin-socket-notify: start kwin_wayland_wrapper and signal systemd when ready.
+#
+# WHY the wrapper is required:
+#   libKWaylandClient.so.6 has 7 static C++ constructors.  At least one of them
+#   calls wl_display_connect(NULL).  When XDG_RUNTIME_DIR is set (always true
+#   inside a systemd user service) but no socket exists at
+#   $XDG_RUNTIME_DIR/wayland-0, wl_display_connect() returns NULL.  The caller
+#   does not handle NULL when XDG_RUNTIME_DIR was set, so it dereferences it
+#   and kwin crashes with SIGSEGV (exit 139) before main() runs.
+#
+#   kwin_wayland_wrapper calls wl_socket_create() which creates a real Unix
+#   socket file at $XDG_RUNTIME_DIR/wayland-N and listens on it BEFORE it
+#   exec's kwin_wayland.  The static constructor then connects successfully
+#   (non-NULL return) and kwin's initialization can proceed.
+
+# ── Logind session ──────────────────────────────────────────────────────────
+echo "kwin-socket-notify: sessions:" >&2
+loginctl list-sessions >&2 2>&1
+
+SESSION=""
+for sid in $(loginctl list-sessions --no-legend 2>/dev/null | awk '$3 == "pitv" {print $1}'); do
+    seat=$(loginctl show-session "$sid" --property=Seat --value 2>/dev/null)
+    if [ "$seat" = "seat0" ]; then
+        SESSION="$sid"
+        break
+    fi
+done
+
+if [ -n "$SESSION" ]; then
+    export XDG_SESSION_ID="$SESSION"
+    echo "kwin-socket-notify: seat0 session=$SESSION Active=$(loginctl show-session "$SESSION" --property=Active --value 2>/dev/null)" >&2
+else
+    echo "kwin-socket-notify: WARNING: no seat0 session found" >&2
+fi
+
+echo "kwin-socket-notify: XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-<unset>}" >&2
+
+echo "kwin-socket-notify: DRM devices:" >&2
+ls -la /dev/dri/ >&2 2>/dev/null || echo "  (none)" >&2
+
+# ── Crash-trigger diagnostics ────────────────────────────────────────────────
+# Run kwin --version under two environment configurations from within the
+# service (XDG_RUNTIME_DIR set, no socket yet) to identify which env var
+# is causing crashes.  Results appear in the journal for analysis.
+
+echo "kwin-socket-notify: diag1 (full service env, no socket):" >&2
+/usr/bin/kwin_wayland --version >/tmp/kwin-d1.log 2>&1
+echo "kwin-socket-notify: diag1 exit=$?" >&2
+cat /tmp/kwin-d1.log >&2
+
+echo "kwin-socket-notify: diag2 (drop QT_LOGGING_RULES):" >&2
+env -u QT_LOGGING_RULES -u QT_LOGGING_TO_CONSOLE /usr/bin/kwin_wayland --version >/tmp/kwin-d2.log 2>&1
+echo "kwin-socket-notify: diag2 exit=$?" >&2
+cat /tmp/kwin-d2.log >&2
+
+echo "kwin-socket-notify: diag3 (drop XDG_RUNTIME_DIR, no wl_display_connect crash expected):" >&2
+env -u XDG_RUNTIME_DIR /usr/bin/kwin_wayland --version >/tmp/kwin-d3.log 2>&1
+echo "kwin-socket-notify: diag3 exit=$?" >&2
+cat /tmp/kwin-d3.log >&2
+
+# ── Start kwin via wrapper ───────────────────────────────────────────────────
+mkdir -p /tmp/.X11-unix 2>/dev/null && chmod 1777 /tmp/.X11-unix 2>/dev/null || true
+
+# Remove any stale socket from a previous crashed run so the wrapper can bind
+# wayland-0 cleanly.
+rm -f "${XDG_RUNTIME_DIR}/wayland-0" "${XDG_RUNTIME_DIR}/wayland-0.lock" 2>/dev/null || true
+
+KWIN_LOG=/tmp/kwin.log
+> "$KWIN_LOG" 2>/dev/null || KWIN_LOG=/dev/null
+echo "kwin-socket-notify: starting kwin_wayland_wrapper (log=$KWIN_LOG)" >&2
+
+# Note: kwin_wayland_wrapper already re-exports WAYLAND_DISPLAY via D-Bus
+# after its socket is created; we set it again below only for other services
+# that poll the environment directly.
+/usr/bin/kwin_wayland_wrapper >"$KWIN_LOG" 2>&1 &
+KWIN_PID=$!
+echo "kwin-socket-notify: wrapper PID=$KWIN_PID" >&2
+
+TIMEOUT=60
+ELAPSED=0
+while ! dbus-send --session --dest=org.freedesktop.DBus \
+        --type=method_call --print-reply \
+        /org/freedesktop/DBus org.freedesktop.DBus.GetNameOwner \
+        string:org.kde.KWinWrapper >/dev/null 2>&1; do
+    sleep 1
+    ELAPSED=$((ELAPSED + 1))
+    if ! kill -0 "$KWIN_PID" 2>/dev/null; then
+        wait "$KWIN_PID" 2>/dev/null; KWIN_EXIT=$?
+        echo "kwin-socket-notify: wrapper exited after ${ELAPSED}s (waiting for org.kde.KWinWrapper), exit=$KWIN_EXIT" >&2
+        echo "kwin-socket-notify: === kwin output ===" >&2
+        cat "$KWIN_LOG" >&2
+        echo "kwin-socket-notify: === end kwin output ===" >&2
+        exit 1
+    fi
+    if [ "$ELAPSED" -ge "$TIMEOUT" ]; then
+        echo "kwin-socket-notify: timed out after ${TIMEOUT}s" >&2
+        kill "$KWIN_PID" 2>/dev/null
+        tail -30 "$KWIN_LOG" >&2 2>/dev/null
+        exit 1
+    fi
+    if [ $((ELAPSED % 5)) -eq 0 ]; then
+        echo "kwin-socket-notify: still waiting (${ELAPSED}s), last kwin output:" >&2
+        tail -3 "$KWIN_LOG" >&2
+    fi
+done
+
+echo "kwin-socket-notify: wrapper registered org.kde.KWinWrapper after ${ELAPSED}s" >&2
+# WAYLAND_DISPLAY is now set in the systemd user environment by the wrapper's
+# KUpdateLaunchEnvironmentJob (which must finish before KWinWrapper is registered).
+systemd-notify --ready
+wait "$KWIN_PID"

@@ -15,16 +15,16 @@ cd build
 
 kas-container build ../kas-project.yaml || exit 1
 
-# Images built by kas-project.yaml. Each produces its own .wic.xz.
-IMAGES="pitv-base"
-
-# Copy the freshly built wic images to the root of the build dir
-for IMAGE in $IMAGES; do
-    WIC=$(ls -t build/tmp/deploy/images/*/"$IMAGE"-*.wic.xz 2>/dev/null | head -n1)
-    if [ -n "$WIC" ]; then
-        cp -f "$WIC" "./$IMAGE.wic.xz"
-        echo "Image available at: build/$IMAGE.wic.xz"
-    else
-        echo "Warning: no .wic.xz image found for $IMAGE under tmp/deploy/images/" >&2
-    fi
-done
+# IMAGE_BASENAME in pitv-base.bb is "pitv", and meta-raspberrypi names images
+# pitv-<machine>.rootfs.wic.bz2 with a companion .wic.bmap for bmaptool.
+WIC=$(ls -t build/tmp/deploy/images/*/pitv-*.wic.bz2 2>/dev/null | head -n1)
+BMAP=$(ls -t build/tmp/deploy/images/*/pitv-*.wic.bmap 2>/dev/null | head -n1)
+if [ -n "$WIC" ]; then
+    cp -f "$WIC"  ./pitv.wic.bz2
+    cp -f "$BMAP" ./pitv.wic.bmap
+    echo "Image available at: build/pitv.wic.bz2"
+    echo "Flash with:  sudo bmaptool copy build/pitv.wic.bz2 /dev/sdX"
+    echo "         or: bzcat build/pitv.wic.bz2 | sudo dd of=/dev/sdX bs=4M status=progress"
+else
+    echo "Warning: no .wic.bz2 image found under build/tmp/deploy/images/" >&2
+fi

@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PiTv Build <build@pitv>
+Date: Wed, 18 Jun 2026 00:00:00 +0000
+Subject: [PATCH] appmenu: pass waylandSurface() to setLastInputDevice
+
+Qt 6.12 changed QWaylandDisplay::setLastInputDevice() to take a
+QWaylandSurface* instead of QWaylandWindow* as the third argument.
+Use waylandWindow->waylandSurface() to get the surface pointer.
+
+Upstream-Status: Pending
+---
+ appmenu/appmenu.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/appmenu/appmenu.cpp b/appmenu/appmenu.cpp
+index 1111111..2222222 100644
+--- a/appmenu/appmenu.cpp
++++ b/appmenu/appmenu.cpp
+@@ -270,7 +270,7 @@ void AppMenuModule::ensureSerial(QWindow *w)
+             auto waylandWindow = dynamic_cast<QtWaylandClient::QWaylandWindow *>(w->handle());
+             if (waylandWindow) {
+                 const auto device = waylandWindow->display()->currentInputDevice();
+-                waylandWindow->display()->setLastInputDevice(device, 1, waylandWindow);
++                waylandWindow->display()->setLastInputDevice(device, 1, waylandWindow->waylandSurface());
+             }
+         }
+     }

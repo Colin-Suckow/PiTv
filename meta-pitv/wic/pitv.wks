@@ -1,0 +1,10 @@
+# PiTv NVMe image layout.
+# Uses nvme0n1 (Waveshare PoE M.2 HAT+) for partition placement.
+#
+# The boot partition uses --use-label so fstab gets "LABEL=boot" rather than
+# a device path. wic's update_fstab() generates "/dev/nvme0n11" (missing 'p')
+# for NVMe disks, which causes a 90-second timeout on boot. A label-based
+# entry finds the correct partition regardless of device name.
+
+part /boot --source bootimg-partition --ondisk nvme0n1 --fstype=vfat --label boot --active --align 4096 --size 100 --use-label
+part / --source rootfs --ondisk nvme0n1 --fstype=ext4 --label root --align 4096

@@ -1,21 +1,16 @@
 #!/bin/sh
-# PiTv boot splash: once the system is up, take the display from plymouth and
-# play the splash video full-screen on KMS/DRM, then let the UI take over.
+# PiTv boot splash: after Plymouth releases the display, play a full-screen
+# splash video via KMS/DRM, then let SDDM take over.
 set -eu
 
 VIDEO=/usr/share/pitv/splash/boot.mp4
 
-# No (real) video yet? Leave plymouth showing the PNG and let the normal
-# plymouth-quit chain dismiss it when the UI starts. -s == exists & non-empty.
+# No video? Exit immediately so SDDM starts without delay.
 [ -s "$VIDEO" ] || exit 0
 
-# Hand the DRM device over from plymouth, keeping the last frame on screen so
-# there's no black flash before mpv draws its first frame.
-plymouth quit --retain-splash 2>/dev/null || true
-
-# --vo=gpu/--gpu-context=drm renders straight to KMS with no compositor and
-# auto-detects the connected display's mode, so the same file fits both the
-# 800x480 touchscreen and a 4K TV (letterboxed, aspect preserved).
+# --vo=drm renders directly to the KMS framebuffer (no GPU/EGL needed).
+# Plymouth has already quit by the time we run (After=plymouth-quit-wait),
+# so we can acquire the DRM device cleanly.
 exec mpv \
     --no-config \
     --really-quiet \
@@ -23,8 +18,6 @@ exec mpv \
     --no-osc \
     --no-input-default-bindings \
     --input-conf=/dev/null \
-    --vo=gpu \
-    --gpu-context=drm \
-    --hwdec=auto \
+    --vo=drm \
     --keep-open=no \
     "$VIDEO"

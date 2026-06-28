@@ -1,0 +1,6 @@
+#!/bin/sh
+# Session lifetime process for KWin Wayland.
+# kwin_wayland exits when this process exits. For a dedicated TV appliance
+# that never needs user logout, sleeping indefinitely is correct — systemd
+# handles clean shutdown and reboot.
+exec sleep infinity

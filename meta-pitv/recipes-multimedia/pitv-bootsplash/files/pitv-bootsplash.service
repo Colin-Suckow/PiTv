@@ -1,17 +1,15 @@
 [Unit]
 Description=PiTv boot splash video
-# Start after plymouth has the screen, but before the graphical UI comes up.
-After=plymouth-start.service systemd-user-sessions.service
-Wants=plymouth-start.service
+# Wait for Plymouth to fully release the DRM device before we take it.
+After=plymouth-quit-wait.service
+Wants=plymouth-quit-wait.service
 Before=display-manager.service sddm.service
-# Don't let the normal plymouth-quit run while we're using the display.
-Conflicts=plymouth-quit.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/pitv-bootsplash
 TimeoutStartSec=120
-# Become the foreground VT so mpv can acquire DRM master.
+# Acquire VT1 as foreground so mpv can open the DRM device.
 StandardInput=tty
 StandardOutput=journal
 TTYPath=/dev/tty1

@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: PiTv Build <build@pitv>
+Date: Wed, 18 Jun 2026 00:00:00 +0000
+Subject: [PATCH] ECMQmlModule6: drop QT_NO_CREATE_VERSIONLESS_FUNCTIONS guard
+
+ECMQmlModule6.cmake sets QT_NO_CREATE_VERSIONLESS_FUNCTIONS=ON before
+calling find_package(Qt6 COMPONENTS Core Qml) to avoid registering Qt
+versionless function aliases during ECM's own module initialisation.
+
+In a cross-compilation Yocto build, the Qml plugin dependency chain
+(via Qt6quick3dspatialaudioplugin → Qt6Quick3D → Qt6ShaderTools, and
+via other plugins → Qt6DBus etc.) causes those Qt module config files
+to be loaded for the first time while the flag is set.  Because cmake
+marks these packages as "already found" after the first load, subsequent
+find_package calls for Qt6ShaderTools, Qt6DBus, etc. in downstream
+CMakeLists.txt are no-ops — their config files are never re-included,
+so the versionless aliases (qt_add_shaders, qt_add_dbus_interface, ...)
+are never registered.  The build then fails with
+  "Unknown CMake command qt_add_shaders / qt_add_dbus_interface / ..."
+
+The guard is not necessary for correctness: projects that include
+ECMQmlModule already depend on Qt6 Qml, and having the standard Qt
+versionless aliases defined is both expected and harmless.  Remove the
+two lines that set and unset the flag.
+
+Upstream-Status: Pending
+---
+ modules/ECMQmlModule6.cmake | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/modules/ECMQmlModule6.cmake b/modules/ECMQmlModule6.cmake
+index 1111111..2222222 100644
+--- a/modules/ECMQmlModule6.cmake
++++ b/modules/ECMQmlModule6.cmake
+@@ -7,9 +7,7 @@
+
+ cmake_policy(VERSION 3.16)
+
+-set(QT_NO_CREATE_VERSIONLESS_FUNCTIONS ON)
+ find_package(Qt6 COMPONENTS Core Qml CONFIG)
+-unset(QT_NO_CREATE_VERSIONLESS_FUNCTIONS)
+
+ if (NOT TARGET Qt6::Qml)
+     message(WARNING "Target Qt6::Qml was not found. ECMQmlModule requires the QML module when building with Qt 6")
